@@ -16,8 +16,8 @@ We now have the opportunity to reuse code too!  With multiple projects checked-o
 This is where the *Qlik Scripting Framework* comes in.  *QSF* is a shared library that, when called first, establishes a framework for Qlik Sense applications and their scripts.
 
 # Installation
-1. Create the following directory on your server:  `C:\Qlik Share\Scripts`.  This is where your data load scripts will reside.  They will likely be spread across multiple repos which you will clone into this directory.
-1. Clone the QSF repo into this directory. (`C:\Qlik Share\Scripts\QSF`)
+1. Create the following directory on your server:  `C:\Qlik Share\Scripts`.  This is where your load scripts will reside.  Assuming your scripts are spread across multiple git repositories, you will clone them beneath this root.
+1. Clone the QSF repo into this directory. (`C:\Qlik Share\Scripts\qsf`)
 2. Copy the `config.ini` file from the `config` folder to the root (`QSF/config/config.ini --> QSF/config.ini`)
 3. Edit the `config.ini`
 
@@ -144,6 +144,7 @@ C:\Qlik Share\Scripts\_TEST\some_repo
 C:\Qlik Share\Scripts\_UAT\some_repo
 ```
 
+**Note**: You will need to create the environment sub-directories on the server manually.
 **Note**: the virtual environment names are prefixed with an underscore.
 
 Notice that the `DEV` environment is not distinguished by a sub-directory because it is the default server environment.
@@ -165,27 +166,27 @@ With this setup, we can have a separate "Landing" area in our DEV, TEST, and UAT
 The following variables are available for referencing in your script.
 
 ## Server-Level Global Variables
-SERVER.SCRIPT_LIB       = `Scripts`  
-SERVER.QSF_REPO_NAME    = `qsf`
-SERVER.QSF_LIB          = `Scripts/qsf`
-SERVER.CONFIG_FILE      = `Scripts/qsf/config.ini`
-SERVER.ENV              = As read from the server config file
+- SERVER.SCRIPT_LIB       = `Scripts`  
+- SERVER.QSF_REPO_NAME    = `qsf`
+- SERVER.QSF_LIB          = `Scripts/qsf`
+- SERVER.CONFIG_FILE      = `Scripts/qsf/config.ini`
+- SERVER.ENV              = As read from the server config file
 
 ## Application-Level Global Variables
-APP.NAME        = `DocumentTitle()`
-APP.SHORT_NAME  = Parsed <APP.NAME>
-APP.REPO_NAME   = Whatever was passed from the application.  The application's script directory under the `Scripts` root.
-APP.SCRIPT_LIB  = <SERVER.SCRIPT_LIB>/<APP.REPO_NAME>
-APP.CONFIG_FILE = <APP.SCRIPT_LIB>/<APP.SHORT_NAME>.ini
-APP.ENV         = As read from config file
-APP.CLEAR       = As read from config file
-APP.DEBUG       = As read from config file
-APP.LIMIT_ROWS  = As read from config file
-APP.ROW_LIMIT   = As read from config file
-APP.SCRIPT_NAME = As read from config file
-APP.SCRIPT_FILE = <APP.SCRIPT_LIB>/<APP.SCRIPT_NAME>.qvs
+- APP.NAME        = `DocumentTitle()`
+- APP.SHORT_NAME  = Parsed <APP.NAME>
+- APP.REPO_NAME   = Whatever was passed from the application.  The application's script directory under the `Scripts` root.
+- APP.SCRIPT_LIB  = <SERVER.SCRIPT_LIB>/<APP.REPO_NAME>
+- APP.CONFIG_FILE = <APP.SCRIPT_LIB>/<APP.SHORT_NAME>.ini
+- APP.ENV         = As read from config file
+- APP.CLEAR       = As read from config file
+- APP.DEBUG       = As read from config file
+- APP.LIMIT_ROWS  = As read from config file
+- APP.ROW_LIMIT   = As read from config file
+- APP.SCRIPT_NAME = As read from config file
+- APP.SCRIPT_FILE = <APP.SCRIPT_LIB>/<APP.SCRIPT_NAME>.qvs
 
-LOAD_PREFIX_FIRST = `FIRST <APP.ROW_LIMIT>`  Can be used in a `LOAD` statement to limit rows.
+- LOAD_PREFIX_FIRST = `FIRST <APP.ROW_LIMIT>`  Can be used in a `LOAD` statement to limit rows.
 
 Variables ending in `_LIB` are intended to be used with the `lib://` prefix in `LOAD` or `include` statements.
 
