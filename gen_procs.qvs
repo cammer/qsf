@@ -1,0 +1,99 @@
+TRACE QSF/gen_procs.qvs included;
+
+Sub DebugInit
+	TRACE *********************************************************;
+	TRACE **  SERVER/ENVIRONMENT VARIABLES;
+	TRACE *********************************************************;
+	TRACE Scripts Library: 				$(SERVER.SCRIPT_LIB); 
+	TRACE QSF Repo/Directory:	 		$(SERVER.QSF_REPO_NAME); 
+	TRACE QSF LIB:				 		$(SERVER.QSF_LIB); 
+	TRACE Server Config File: 			$(SERVER.CONFIG_FILE); 
+	TRACE Server Environment: 			$(SERVER.ENV); 
+	TRACE Server Debug: 				$(SERVER.DEBUG); 
+	TRACE LOAD_PREFIX_CONCAT: 			$(LOAD_PREFIX_CONCAT);
+	TRACE LOAD_PREFIX_FIRST: 			$(LOAD_PREFIX_FIRST);
+End Sub
+
+Sub DebugApp
+	TRACE *********************************************************;
+	TRACE **  APPLICATION VARIABLES;
+	TRACE *********************************************************;
+	TRACE Application Name:				$(APP.NAME); 
+	TRACE Short App Name: 				$(APP.SHORT_NAME); 
+	TRACE Application''s Git Repo: 		$(APP.REPO_NAME); 
+	TRACE Application Script Library: 	$(APP.SCRIPT_LIB); 
+	TRACE Application Config File: 		$(APP.CONFIG_FILE); 
+	TRACE Application environment: 		$(APP.ENV); 
+	TRACE Clear Flag: 					$(APP.CLEAR); 
+	TRACE Limit Rows Flag:		 		$(APP.LIMIT_ROWS); 
+	TRACE Row Limit:			 		$(APP.ROW_LIMIT); 
+	TRACE Debug Flag:			 		$(SERVER.DEBUG); 
+	TRACE Application Script:	 		$(APP.SCRIPT); 
+	TRACE Application Script File: 		$(APP.SCRIPT_FILE); 
+End Sub
+
+Sub GetEnvFromAppName( _sAppNameOrig, _sDefaultEnv, sReturnEnv)
+	If SERVER.DEBUG = 'VERBOSE' Then 
+		TRACE ParseAppName( '$(_sAppNameOrig)') has been called.;
+	End If
+	
+	sUpperAppName = Upper( _sAppNameOrig);
+	
+	/**********************************************************************
+	***   APP NAME - Reserved Words
+	**********************************************************************/
+	If Index( sUpperAppName, 'PROD')>0 Then
+		sReturnEnv = 'PROD';
+	ElseIf Index( sUpperAppName, 'UAT')>0 Then
+		sReturnEnv = 'UAT';
+	ElseIf Index( sUpperAppName, 'TEST')>0 Then
+		sReturnEnv = 'TEST';
+	ElseIf Index( sUpperAppName, 'DEV')>0 Then
+		sReturnEnv = 'DEV';
+	Else 
+		TRACE No reserved word found relating to environment.;
+		// If not specified, then the server environment.
+		sReturnEnv = _sDefaultEnv;
+	End If
+End Sub
+
+Sub CleanseString( _sInput, _sSearch, _sReplace, sOutput)
+	If SERVER.DEBUG Then 
+		TRACE CleanseString( '$(_sInput)', '$(_sSearch)', '$(_sReplace)') has been called.;
+	End If 
+	
+	sOutput = '';
+
+	// Replace reserved words
+	_sInput = Replace( Replace( Replace( Replace( Lower( _sInput), 'prod', ''),'uat', ''), 'test', ''), 'dev', '');
+
+	// Replace special characters
+	_sInput = PurgeChar( Trim( _sInput), '!@#$%^&*~`,./?;:+=<>(){}[]');
+
+	// Replace dashes and underscores with spaces
+	_sInput = LTrim( RTrim( Replace( Replace( _sInput, '-', ' '),'_',' ')));
+
+	TRACE _sInput = $(_sInput);
+	
+	_iNumTokens = SubStringCount( _sInput, _sSearch) + 1;
+	
+	TRACE _iNumTokens = $(_iNumTokens);
+	
+	// Replace multiple spaces with a single underscore
+	For _iTokenCounter = 1 to _iNumTokens
+		_sToken = SubField( _sInput, _sSearch, _iTokenCounter);
+		If Len( _sToken)>0 Then 
+			If _iTokenCounter>1 Then 
+				_sToken = _sReplace & _sToken;
+			End If 
+			sOutput = sOutput & _sToken;
+		End If 
+	Next 
+End Sub 
+
+Sub ShortenAppName( _sInput, sOutput)
+	Call CleanseString( _sInput, ' ', '_', sOutput);
+End Sub 
+
+
+
