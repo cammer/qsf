@@ -1,0 +1,46 @@
+/*********************************************************************************************************************
+**   DropAllTables
+**********************************************************************************************************************
+This procedure drops all tables.
+**********************************************************************************************************************
+**	Inputs:		None 
+**	Outputs: 	None
+**********************************************************************************************************************
+Example: 
+
+	Call DropAllTables;
+*********************************************************************************************************************/
+Sub DropAllTables
+	iNumTables = NoOfTables();
+
+	For iTableCounter = 1 to iNumTables
+		sTableName = TableName(0);
+		DROP TABLE [$(sTableName)];
+	Next
+End Sub
+
+Sub TableExists( _sInputTable, bReturnTableExists)
+	If SERVER.DEBUG Then 
+		TRACE TableExists( '$(_sInputTable)') called.;
+	End If 
+	
+	bTableExists = False();
+
+	If NOT IsNull( TableNumber(_sInputTable)) Then 
+		bTableExists = True();
+	End If 
+	
+	bReturnTableExists = bTableExists;
+End Sub
+
+Sub DropTable( _sInputTable)
+	If SERVER.DEBUG Then 
+		TRACE DropTable( '$(_sInputTable)') called.;
+	End If 
+
+	Call TableExists( _sInputTable, bTableExists);
+	If bTableExists Then 
+		DROP TABLE [$(_sInputTable)];
+	End If
+End Sub
+

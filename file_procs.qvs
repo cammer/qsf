@@ -1,0 +1,143 @@
+Sub ParseFileURI( _sInput, sUpperPath, sFileName, sExt)
+	If SERVER.DEBUG Then 
+		TRACE ParseFileURI( '$(_sInput)') called.;
+	End If 
+
+	// copy input parameter to a local variable so we don't affect it
+	sInput = _sInput;
+	
+	// Initialize the return variables 
+	sUpperPath='';
+	sFileName='';
+	sExt='';
+
+	// Initialize some other local variables 
+	sFilenameWithExt='';
+
+	// Contains backslashes.  Convert to forward slashes.
+	If Index( sInput, '\')>0 Then
+		sInput = Replace( sInput, '\', '/');
+	End If
+
+	// Get rid of special chars (except dashes and underscores)
+	sInput = PurgeChar( sInput, '!@#$%^&~`,?;:+=<>(){}[]');
+
+	// No relative directories
+	sInput = Replace( sInput, '../', '');
+	
+	// Contains a slash - loading from a sub-directory
+	If Index( sInput, '/')>0 Then
+		bIsSubDir = True();
+	Else 
+		bIsSubDir = False();
+	End If
+
+	// Contains a period 
+	If Index( sInput, '.')>0 Then
+		bIsExt = True();
+	Else 
+		bIsExt = False();
+	End If
+
+	// Contains a slash 
+	If bIsSubDir Then
+		
+		// find the stuff after the last slash (might contain special chars)
+		sFilenameWithExt = SubField( sInput, '/', -1);
+		
+		// everything to the left of the last slash
+		sUpperPath = Replace( sInput, sFilenameWithExt, '');
+
+		// If sUpperPath starts with a slash, remove it.
+		// Important: sUpperPath MUST NOT start with a slash and MUST end in a slash
+		If Left( sUpperPath, 1) = '/' Then
+			sUpperPath = Right( sUpperPath, Len( sUpperPath)-1);
+		End If 
+
+	Else
+		// Doesn't contain a slash: table=full_path
+		sFilenameWithExt = sInput;
+	End If
+
+	// If there is an extension
+	If bIsExt Then
+		
+		sExt = SubField( sFilenameWithExt, '.', -1);
+		sFileName = Replace( sFilenameWithExt, '.' & sExt, '');
+	Else
+		// If no period, then table is the full
+		sFileName = sFilenameWithExt;
+	End If	
+
+	If SERVER.DEBUG Then 
+		TRACE ParseFileURI: sUpperPath = '$(sUpperPath)';
+		TRACE ParseFileURI: sFileName = '$(sFileName)';
+		TRACE ParseFileURI: sExt = '$(sExt)';
+	End If 
+End Sub 
+
+Sub SetFileURI( _sSourceLib, _sUpperPath, _sSourceTable, _sExt, sResultURI)
+	If SERVER.DEBUG Then 
+		TRACE SetFileURI( '$(_sSourceLib)', '$(_sUpperPath)', '$(_sSourceTable)', '$(_sExt)') called.;
+	End If 
+
+	// Make sure sUpperPath is set properly 
+	sUpperPath = _sUpperPath;
+	If sUpperPath<>'' Then 
+		// If sUpperPath starts with a slash, remove it.
+		If Left( sUpperPath, 1) = '/' Then
+			sUpperPath = Right( sUpperPath, Len( sUpperPath)-1);
+		End If 
+		
+		// If sUpperPath doesn't end with a slash, add one.
+		If Right( sUpperPath, 1)<>'/' Then 
+			SET sUpperPath = "$(sUpperPath)/";
+		End If
+	End If 
+	
+	
+	SET sResultURI = $(_sSourceLib)/$(sUpperPath)$(_sSourceTable).$(_sExt);
+	
+	If SERVER.DEBUG Then 
+		TRACE ParseFileURI: '$(sResultURI)' returned.;
+	End If 
+End Sub 
+
+Sub GetFileDetails( _sFileURI, bIsPresent, iFileSize, tFileTime)
+	If SERVER.DEBUG Then 
+		TRACE GetFileDetails( '$(_sFileURI)') called.;
+	End If 
+	
+	bIsPresent = Null();
+	iFileSize = Null();
+	tFileTime = Null();
+	
+	Call FileExists( _sFileURI, bIsPresent);
+	
+	If bIsPresent Then 
+		iFileSize = FileSize( 'lib://$(_sFileURI)');
+		tFileTime = FileTime( 'lib://$(_sFileURI)');
+	End If
+	
+	If SERVER.DEBUG Then 
+		TRACE GetFileDetails: bIsPresent = '$(bIsPresent)';
+		TRACE GetFileDetails: iFileSize = '$(iFileSize)';
+		TRACE GetFileDetails: tFileTime = '$(tFileTime)';
+	End If 
+End Sub 
+
+Sub FileExists( _sFileURI, bExists)
+	If SERVER.DEBUG Then 
+		TRACE FileExists( '$(_sFileURI)') called.;
+	End If 
+
+	bExists=False();
+	
+	If NOT IsNull( FileSize( 'lib://$(_sFileURI)')) Then 
+		bExists=True();
+	End If 
+
+	If SERVER.DEBUG Then 
+		TRACE FileExists: bExists = '$(bExists)';
+	End If 
+End Sub

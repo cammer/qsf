@@ -1,0 +1,287 @@
+TRACE QSF/ini_procs.qvs included;
+
+Sub InitConfigTables
+	// This sub-routine is idempotent
+	If SERVER.DEBUG Then
+		TRACE Initializing config and raw_config tables...;
+	End If
+
+	Call TableExists( 'raw_config', _bTableExists)
+	If NOT _bTableExists Then 
+		raw_config:
+		LOAD
+			*
+		INLINE 
+			[RawFileName,RawContent,IsSectionHeader,RawSection]
+		;
+	End If
+	
+	Call TableExists( 'config', _bTableExists)
+	If NOT _bTableExists Then 
+		config:
+		LOAD
+			*
+		INLINE 
+			[File,Section,Content,ContainsEquals,ContainsComma,SectionIsVars,SectionIsFunc,ContentType,Key,Value,FirstChar,IsQuoted]
+		;
+	End If 
+End Sub
+
+
+/******************************************************************************
+**   Read an .ini file
+******************************************************************************/
+Sub ReadIniFile( _sFileName)
+	If SERVER.DEBUG Then
+		TRACE ReadIniFile( $(_sFileName)) has been called;
+	End If
+	
+	Call FileExists( _sFileName, bFileExists);
+	If NOT bFileExists Then 
+		TRACE ERROR: Configuration file '$(_sFileName)' does not exist;
+		Exit Script;
+	End If 
+
+	// initialize the 2 config tables 
+	Call InitConfigTables;
+	
+	If SERVER.DEBUG Then
+		TRACE Loading file $(_sFileName) to raw_config table...;
+	End If
+
+	
+	raw_config:
+	CONCATENATE (raw_config)
+	LOAD
+		[RawFileName]
+		,[RawContent]
+		,[IsSectionHeader]
+		// For rows tagged as a section header, extract the section name (between the square brackets)
+		,If( [IsSectionHeader], TextBetween( [RawContent], '[', ']')) AS [RawSection]
+	;
+	// Look for a square bracket - indicates a section header (ex. [SECTION])
+	LOAD
+		[RawFileName]
+		,[RawContent]
+		,If( Left( Trim( [RawContent]), 1)='[', True(), False()) AS [IsSectionHeader]
+	;
+	// Not really sure why I duplicated here
+	LOAD
+		[RawFileName]
+		,[RawContent]
+	;
+	LOAD
+		// Add a field for the filename
+		'$(_sFileName)' AS [RawFileName]
+		// Load each row as a string (no delimiters)
+		,"@1:n" AS [RawContent]
+	FROM 
+		[lib://$(_sFileName)]
+		(fix, codepage is 1252, no labels);
+	;
+
+	If SERVER.DEBUG Then
+		TRACE Loading the tmp_config table (and filling the Section field)...;
+	End If
+
+	
+	// temp table: Getting the section header to repeat on every row
+	tmp_content:
+	LOAD
+		[RawFileName] AS [File]
+		,Trim( [RawContent]) AS [Content]
+		,[IsSectionHeader]
+		// Get the section header to repeat on every row within the section
+		,If( IsNull( [RawSection]), Peek('NewSection'), [RawSection]) as [NewSection]
+	RESIDENT 
+		raw_config
+	WHERE
+		// Omit empty or commented lines
+		[RawFileName]='$(_sFileName)'
+		AND Left( Trim( [RawContent]), 1)<>'#' 
+		AND Left( Trim( [RawContent]), 1)<>';'
+		AND Len( Trim( [RawContent]))>0
+	;
+
+	If SERVER.DEBUG Then
+		TRACE Loading config table...;
+	End If
+
+	// load the final 'config' table
+	CONCATENATE(config)
+	LOAD
+		[File]
+		,[Section]
+		,[Content]
+		,[ContainsEquals]
+		,[ContainsComma]
+		,[SectionIsVars]
+		,[SectionIsFunc]
+		,[ContentType]
+		,[Key]
+		// If Value is quoted, eliminate the quotes
+		,If( [IsQuoted] and Not([SectionIsVars]) and Not([SectionIsFunc]), Replace( [Value], Chr( [FirstChar]), ''), [Value]) AS [Value]
+		,[FirstChar]
+		,[IsQuoted]
+	;
+	LOAD
+		[File]
+		,[Section]
+		,[Content]
+		,[ContainsEquals]
+		,[ContainsComma]
+		,[SectionIsVars]
+		,[SectionIsFunc]
+		,[ContentType]
+		,[Key]
+		,[Value]
+		,[FirstChar]
+		// See if it's a quote
+		,If( [FirstChar]=34 OR [FirstChar]=39, True(), False()) AS [IsQuoted]
+	;
+	LOAD
+		[File]
+		,[Section]
+		,[Content]
+		,[ContainsEquals]
+		,[ContainsComma]
+		,[SectionIsVars]
+		,[SectionIsFunc]
+		,[ContentType]
+		,[Key]
+		,[Value]
+		// Get the ASCII value for the first character of Value
+		,Ord( [Value]) AS [FirstChar] 
+	;
+	LOAD
+		[File]
+		,[Section]
+		,[Content]
+		,[ContainsEquals]
+		,[ContainsComma]
+		,[SectionIsVars]
+		,[SectionIsFunc]
+		// Set the content type
+		,If( [ContainsEquals], 'Parameter', If( [ContainsComma], 'List', 'Unknown')) AS [ContentType]
+		// Extract Key=Value from the rows that have equals
+		,If( [ContainsEquals], Trim( SubField( [Content], '=', 1))) AS [Key]
+		,If( [ContainsEquals], Trim(Right(  [Content] , len( [Content]) - Index( [Content], '=')))) AS [Value]
+	;
+	LOAD
+		[File]
+		,[NewSection] AS [Section]
+		,[Content]
+		,If( mixmatch( [NewSection],'VARIABLES','VARIABLE')>0, True(), False()) AS [SectionIsVars]
+		,If( mixmatch( [NewSection],'FUNCTIONS','FUNCTION')>0, True(), False()) AS [SectionIsFunc]
+		// Look for equals sign.  Indicates a variable.
+		,If( Index( [Content], '=')>0, True(), False()) AS [ContainsEquals]
+		// Look for a comma.  Indicates a list.
+		,If( Index( [Content], ',')>0, True(), False()) AS [ContainsComma]
+	RESIDENT
+		tmp_content
+	WHERE
+		// For non section header rows
+		NOT [IsSectionHeader]
+	;
+
+	If SERVER.DEBUG Then
+		TRACE Dropping the tmp_content table...;
+	End If
+	
+	DROP TABLE tmp_content;
+End Sub
+
+
+
+/**********************************************************************
+***   SetParameters
+***********************************************************************
+For every row in an .ini file, where ContentType=Parameter or List, 
+Set a variable in the script
+**********************************************************************/
+Sub SetParameters( _sFile)
+	
+	Call ReadIniFile( _sFile);	
+	
+	sTableName = 'config';
+	
+	iRowCount = NoOfRows( sTableName) -1;
+
+	For iCurrentRow = 0 To iRowCount
+
+		// Just want to deal with the rows from the file that was passed
+		sFile = Trim( Peek( 'File', iCurrentRow, sTableName));
+		sContentType = Trim( Peek( 'ContentType', iCurrentRow, sTableName));
+		sContainsComma = Trim( Peek( 'ContainsComma', iCurrentRow, sTableName));
+		sSectionIsVars = Trim( Peek( 'SectionIsVars', iCurrentRow, sTableName));
+		sSectionIsFunc = Trim( Peek( 'SectionIsFunc', iCurrentRow, sTableName));
+		If sFile = _sFile AND sContentType='Parameter' Then
+		
+			// read the current row's content & section
+			sParameter 	= Peek( 'Key', iCurrentRow, sTableName);
+			sValue 	= Peek( 'Value', iCurrentRow, sTableName);
+			sSection = Trim( Peek( 'Section', iCurrentRow, sTableName));
+
+			// if the section is null
+			If IsNull( sSection) Then
+				sSection = '';
+			Else
+				sSection = sSection & '.';
+			End If
+
+			// When '1' should be True()
+			If sValue='0b0' Then 
+				sValue = False();
+			ElseIf sValue='0b1' Then 
+				sValue = True();
+			End If
+
+			TRACE sContainsComma=$(sContainsComma);
+			
+			If sContainsComma='True' and sSectionIsFunc='False' Then 
+				iTotalElements = SubStringCount(sValue, ',')+1;
+				cElement = ''
+				For iElement = 1 to iTotalElements
+					sElement = SubField(sValue, ',', iElement);
+					if iElement = 1 then
+					cElement = Chr(39) & sElement & Chr(39)
+					Else 
+					cElement = cElement & Chr(44) & Chr(39) & sElement & Chr(39)
+					End if
+					// Quote the element
+					//sValue = Replace( sValue, sElement, Chr(39) & sElement & Chr(39));
+					
+				Next
+				TRACE cElement is $(cElement);
+				sValue = cElement; 
+			End If 
+
+			// Set the variable
+			[$(sSection)$(sParameter)] = sValue;
+						
+			If sSectionIsFunc='True' Then 
+				// SET [$(sSection)$(sParameter)] = '$($(sSection)$(sParameter))';
+				// LET [$(sSection)$(sParameter)] = Replace($(sSection)$(sParameter),'@','$'); 
+				SET [$(sSection)$(sParameter)] = '$($(sSection)$(sParameter))';
+				LET [$(sSection)$(sParameter)] = Replace($(sSection)$(sParameter),'@','$'); 
+			end if 
+
+
+				
+			If SERVER.DEBUG THEN
+				TRACE $(sSection)$(sParameter) = $(sValue);
+			End If
+		End If
+	Next
+End Sub
+
+Sub DropConfigTables
+	If NOT IsNull( TableNumber( 'raw_config')) Then 
+		DROP TABLE raw_config;
+	End If 
+	
+	If NOT IsNull( TableNumber( 'config')) Then 
+		DROP TABLE config;
+	End If
+End Sub
+
