@@ -20,7 +20,7 @@ Sub DropAllTables
 End Sub
 
 Sub TableExists( _sInputTable, bReturnTableExists)
-	If SERVER.DEBUG Then 
+	If QSF.DEBUG Then 
 		TRACE TableExists( '$(_sInputTable)') called.;
 	End If 
 	
@@ -34,7 +34,7 @@ Sub TableExists( _sInputTable, bReturnTableExists)
 End Sub
 
 Sub DropTable( _sInputTable)
-	If SERVER.DEBUG Then 
+	If QSF.DEBUG Then 
 		TRACE DropTable( '$(_sInputTable)') called.;
 	End If 
 

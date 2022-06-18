@@ -1,11 +1,11 @@
-/*************************************************************
+/**************************************************************************************
 							REQUIRED
-**************************************************************
+***************************************************************************************
 APP.REPO_NAME
   Type: 	String
-  Purpose:  The name of the repo where the application's load scripts reside. 
+  Purpose:  The name of the repo where the calling application's load scripts reside. 
 			This is a sub-directory under the Scripts root.
-*************************************************************/
+**************************************************************************************/
 TRACE Qlik Scripting Framework (QSF) starting....;
 
 TRACE ....____... ________;
@@ -13,7 +13,7 @@ TRACE .../ __ \. / __/ __/;
 TRACE ../ /_/ / _\ \/ _/  ;
 TRACE ..\___\_\/___/_/    ;
 
-// Validate the default environment, as read from config.qvs
+// Validate the default environment, as read from init.qvs
 // Must be one of [DEV|TEST|UAT|PROD]
 If Pick( QSF.DEFAULT_ENV, 'DEV', 'TEST', 'UAT', 'PROD')=0 Then 
 	TRACE Invalid environment '$(QSF.DEFAULT_ENV)';
@@ -105,9 +105,9 @@ Call SetParameters( APP.CONFIG_FILE);
 /************************************************************/
 
 
-/*************************************************************
+/***************************************************************************************************************
 			SET SOME OTHER GLOBAL VARS
-*************************************************************/
+***************************************************************************************************************/
 If APP.LIMIT_ROWS Then 
 	// Intended for developers to use in their load scripts.
 	SET LOAD_PREFIX_FIRST = "FIRST $(APP.ROW_LIMIT)";
@@ -116,7 +116,14 @@ Else
 	LOAD_PREFIX_FIRST = '';
 	LOAD_PREFIX_CONCAT = '';
 End If
-/**************************************************************************************************************/
+
+
+/***************************************************************************************************************
+		INCLUDE LIBRARIES
+***************************************************************************************
+Parse the APP.INCLUDE_LIBS variable (as passed in the app's config.ini file) and include each library.
+***************************************************************************************************************/
+Call IncludeLibraries;
 
 
 /***************************************************************************************************************
