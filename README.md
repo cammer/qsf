@@ -1,6 +1,3 @@
-# qsf
-Qlik Scripting Framework
-=======
 # Qlik Scripting Framework (QSF)
 
 # Purpose
@@ -19,8 +16,8 @@ We now have the opportunity to reuse code too!  With multiple projects checked-o
 This is where the *Qlik Scripting Framework* comes in.  *QSF* is a shared library that, when called first, establishes a framework for Qlik Sense applications and their scripts.
 
 # Installation
-1. Create the following directory on your server:  `C:\Qlik Share\Scripts`.  This is where your data load scripts will reside.  They will likely be spread across multiple repos which you will clone into this directory.
-1. Clone the QSF repo into this directory. (`C:\Qlik Share\Scripts\QSF`)
+1. Create the following directory on your server:  `C:\Qlik Share\Scripts`.  This is where your load scripts will reside.  Assuming your scripts are spread across multiple git repositories, you will clone them beneath this root.
+1. Clone the QSF repo into this directory. (`C:\Qlik Share\Scripts\qsf`)
 2. Copy the `config.ini` file from the `config` folder to the root (`QSF/config/config.ini --> QSF/config.ini`)
 3. Edit the `config.ini`
 
@@ -31,7 +28,6 @@ The `config.ini` describes the server environment and sets the log level.
 
 ```
 [SERVER]
-DOMAIN_NAME=MyQlikServer01
 ENV=DEV
 DEBUG=0b0
 ```
@@ -95,14 +91,9 @@ app_var2=value2
 [APP]
 CLEAR=0b0
 DEBUG=0b0
-DISABLE_DSR=0b0
 LIMIT_ROWS=0b0
 ROW_LIMIT=1000
-SCRIPT=some_other_script
-
-[INCLUDE]
-lib_alias1=lib_repo1
-lib_alias2=lib_repo2
+SCRIPT_NAME=some_other_script
 ```
 
 **Note**: lines can be commented out using ';' or '#'.
@@ -120,22 +111,15 @@ lib_alias2=lib_repo2
 |`DISABLE_DSR`| Disables row-level security (called "Data Set Reduction" in Qlik).  Default = FALSE.
 |`LIMIT_ROWS`| Whether or not to limit the number of rows that are loaded to the application.  Effective when testing the application build.  Default = FALSE.
 |`ROW_LIMIT`| If `LIMIT_ROWS = TRUE` then only this number of rows will be loaded.
-|`SCRIPT`| The name of the script that will be run when QSF is finished.  Will be suffixed with `.qvs`  Default = main.
+|`SCRIPT_NAME`| The name of the script that will be run when QSF is finished.  Will be suffixed with `.qvs`  Default = `SHORT_APP_NAME`.
 
 ### Variables
 Other script variables can be defined outside/above of the `[APP]` block.  These variables will be available to your load script as if they had been declared in your load script using the `SET|LET` commands.
 
-### Includes
-You can include other libraries (repos).  For any row specified in the `[INCLUDE]` section, the following will happen:
-1. The configruation file will be read from the following location: `Scripts/lib_repo1/config.ini` 
-2. The repo's `main.qvs` script will be included (`$(Include=[lib://Scripts/lib_repo1/main.qvs]);`)
-
-This provides a flexible mechanism for developers to call methods from other libraries.
-
 ## Your Load Script
 Once *QSF* has read your application's config file, it will run your load script.  
-*QSF* will look for the following file: `Scripts/<APP.REPO_NAME>/<SCRIPT>.qvs`.  
-If you haven't specified a value for the `SCRIPT` variable, then *QSF* will look for `Scripts/<APP.REPO_NAME>/main.qvs'.
+*QSF* will look for the following file: `Scripts/<APP.REPO_NAME>/<SCRIPT_NAME>.qvs`.  
+If you haven't specified a value for the `SCRIPT_NAME` variable, then *QSF* will look for `Scripts/<APP.REPO_NAME>/<APP.SHORT_NAME>.qvs'.
 
 **Note**: your main script can reference *other* scripts using the `include` command.  
 
@@ -148,7 +132,6 @@ Your application can be named anything, but if it contains an environment reserv
 Let's assume that we have the following server configuration.
 ```
 [SERVER]
-DOMAIN_NAME=QLIKDEV-02
 ENV=DEV
 DEBUG=0b0
 ```
@@ -161,6 +144,7 @@ C:\Qlik Share\Scripts\_TEST\some_repo
 C:\Qlik Share\Scripts\_UAT\some_repo
 ```
 
+**Note**: You will need to create the environment sub-directories on the server manually.
 **Note**: the virtual environment names are prefixed with an underscore.
 
 Notice that the `DEV` environment is not distinguished by a sub-directory because it is the default server environment.
@@ -182,43 +166,29 @@ With this setup, we can have a separate "Landing" area in our DEV, TEST, and UAT
 The following variables are available for referencing in your script.
 
 ## Server-Level Global Variables
-SERVER.SCRIPT_LIB       = `Scripts`  Can be used with the `lib://` prefix in an `include` or `LOAD` statement
-SERVER.QSF_REPO_NAME    = `qsf`
-SERVER.QSF_LIB          = `Scripts/qsf`
-SERVER.CONFIG_FILE      = `Scripts/qsf/config.ini`
-SERVER.ENV              = As read from the server config file
-SERVER.DOMAIN_NAME      = As read from the server config file
+- SERVER.SCRIPT_LIB       = `Scripts`  
+- SERVER.QSF_REPO_NAME    = `qsf`
+- SERVER.QSF_LIB          = `Scripts/qsf`
+- SERVER.CONFIG_FILE      = `Scripts/qsf/config.ini`
+- SERVER.ENV              = As read from the server config file
 
 ## Application-Level Global Variables
-APP.NAME        = `DocumentTitle()`
-APP.SHORT_NAME  = Parsed <APP.NAME>
-APP.REPO_NAME   = Whatever was passed from the application.  Represents the application's sub-directory.
-APP.SCRIPT_LIB  = <SERVER.SCRIPT_LIB>/<APP.REPO_NAME>
-APP.CONFIG_FILE = <APP.SCRIPT_LIB>/<APP.SHORT_NAME>.ini
-APP.ENV         = As read from config file
-APP.CLEAR       = As read from config file
-APP.DEBUG       = As read from config file
-APP.LIMIT_ROWS  = As read from config file
-APP.ROW_LIMIT   = As read from config file
-APP.SCRIPT_NAME = As read from config file
-APP.SCRIPT_FILE = <APP.SCRIPT_LIB>/<APP.SCRIPT_NAME>.qvs
+- APP.NAME        = `DocumentTitle()`
+- APP.SHORT_NAME  = Parsed <APP.NAME>
+- APP.REPO_NAME   = Whatever was passed from the application.  The application's script directory under the `Scripts` root.
+- APP.SCRIPT_LIB  = <SERVER.SCRIPT_LIB>/<APP.REPO_NAME>
+- APP.CONFIG_FILE = <APP.SCRIPT_LIB>/<APP.SHORT_NAME>.ini
+- APP.ENV         = As read from config file
+- APP.CLEAR       = As read from config file
+- APP.DEBUG       = As read from config file
+- APP.LIMIT_ROWS  = As read from config file
+- APP.ROW_LIMIT   = As read from config file
+- APP.SCRIPT_NAME = As read from config file
+- APP.SCRIPT_FILE = <APP.SCRIPT_LIB>/<APP.SCRIPT_NAME>.qvs
 
-LOAD_PREFIX_FIRST = `FIRST <APP.ROW_LIMIT>`  Can be used in a `LOAD` statement to limit rows.
+- LOAD_PREFIX_FIRST = `FIRST <APP.ROW_LIMIT>`  Can be used in a `LOAD` statement to limit rows.
 
-## Example #1: Non-Production server with DEV and TEST environments.  (Default server environment = DEV)
-
-|App Name | Derived Virtual Environment | Config File | Script |
-|-------- | --------------------------- | ------------|-------|
-|HANKOOK | DEV | /Scripts/some_repo/hankook.ini | /Scripts/some_repo/main.qvs
-|HANKOOK - TEST | TEST | /Scripts/\_TEST/some_repo/hankook.ini | /Scripts/\_TEST/some_repo/main.qvs
-
-
-## Example #2: Production server with UAT and PROD environments  (Default server environment = PROD)
-
-|App Name | Derived Virtual Environment | Config File | Script |
-|-------- | --------------------------- | ------------|-------|
-|HANKOOK - UAT | UAT | /Scripts/\_UAT/some_repo/hankook.ini | /Scripts/\_UAT/some_repo/main.qvs
-|HANKOOK | PROD | /Scripts/some_repo/hankook.ini | /Scripts/some_repo/main.qvs
+Variables ending in `_LIB` are intended to be used with the `lib://` prefix in `LOAD` or `include` statements.
 
 # What else can I do?
 Now that your apps only contain two lines of code, it's really easy to move them between environments.  You can simply copy and rename the app to get it to run in a different "environment".  Just make sure you've also copied the scripts to the appropriate sub-directory.  You can also use git to check out a specific tag/release in an environment.
