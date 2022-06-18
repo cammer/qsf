@@ -4,15 +4,11 @@ Sub DebugServerVars
 	TRACE *********************************************************;
 	TRACE **  SERVER/ENVIRONMENT VARIABLES;
 	TRACE *********************************************************;
-	TRACE 'Scripts' Data Connection:	$(SERVER.SCRIPT_DC); 
-	TRACE 'Data' Data Connection:		$(SERVER.DATA_DC); 
-	TRACE Scripts Library: 				$(SERVER.SCRIPT_LIB); 
-	TRACE Data Library:					$(SERVER.DATA_LIB); 
-	TRACE QSF Repo/Directory:	 		$(SERVER.QSF_REPO_NAME); 
-	TRACE QSF LIB:				 		$(SERVER.QSF_LIB); 
-	TRACE Server Config File: 			$(SERVER.CONFIG_FILE); 
-	TRACE Server Environment: 			$(SERVER.ENV); 
-	TRACE Server Debug: 				$(SERVER.DEBUG); 
+	TRACE Scripts Library: 				$(QSF.SCRIPT_LIB); 
+	TRACE Data Library:					$(QSF.DATA_LIB); 
+	TRACE QSF Repo/Directory:	 		$(QSF.REPO_NAME); 
+	TRACE Server Environment: 			$(QSF.DEFAULT_ENV); 
+	TRACE Server Debug: 				$(QSF.DEBUG); 
 	TRACE LOAD_PREFIX_CONCAT: 			$(LOAD_PREFIX_CONCAT);
 	TRACE LOAD_PREFIX_FIRST: 			$(LOAD_PREFIX_FIRST);
 End Sub
@@ -30,13 +26,13 @@ Sub DebugAppVars
 	TRACE Clear Flag: 					$(APP.CLEAR); 
 	TRACE Limit Rows Flag:		 		$(APP.LIMIT_ROWS); 
 	TRACE Row Limit:			 		$(APP.ROW_LIMIT); 
-	TRACE Debug Flag:			 		$(SERVER.DEBUG); 
+	TRACE Debug Flag:			 		$(QSF.DEBUG); 
 	TRACE Application Script:	 		$(APP.SCRIPT); 
 	TRACE Application Script File: 		$(APP.SCRIPT_FILE); 
 End Sub
 
 Sub GetEnvFromAppName( _sAppNameOrig, _sDefaultEnv, sReturnEnv)
-	If SERVER.DEBUG = 'VERBOSE' Then 
+	If QSF.DEBUG = 'VERBOSE' Then 
 		TRACE ParseAppName( '$(_sAppNameOrig)') has been called.;
 	End If
 	
@@ -61,7 +57,7 @@ Sub GetEnvFromAppName( _sAppNameOrig, _sDefaultEnv, sReturnEnv)
 End Sub
 
 Sub CleanseString( _sInput, _sSearch, _sReplace, sOutput)
-	If SERVER.DEBUG Then 
+	If QSF.DEBUG Then 
 		TRACE CleanseString( '$(_sInput)', '$(_sSearch)', '$(_sReplace)') has been called.;
 	End If 
 	
@@ -113,3 +109,4 @@ Sub QuoteListElements( _sInput, sOutput)
 		End if
 	Next
 End Sub 
+

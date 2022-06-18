@@ -1,5 +1,5 @@
 Sub ParseFileURI( _sInput, sUpperPath, sFileName, sExt)
-	If SERVER.DEBUG Then 
+	If QSF.DEBUG Then 
 		TRACE ParseFileURI( '$(_sInput)') called.;
 	End If 
 
@@ -69,7 +69,7 @@ Sub ParseFileURI( _sInput, sUpperPath, sFileName, sExt)
 		sFileName = sFilenameWithExt;
 	End If	
 
-	If SERVER.DEBUG Then 
+	If QSF.DEBUG Then 
 		TRACE ParseFileURI: sUpperPath = '$(sUpperPath)';
 		TRACE ParseFileURI: sFileName = '$(sFileName)';
 		TRACE ParseFileURI: sExt = '$(sExt)';
@@ -77,7 +77,7 @@ Sub ParseFileURI( _sInput, sUpperPath, sFileName, sExt)
 End Sub 
 
 Sub SetFileURI( _sSourceLib, _sUpperPath, _sSourceTable, _sExt, sResultURI)
-	If SERVER.DEBUG Then 
+	If QSF.DEBUG Then 
 		TRACE SetFileURI( '$(_sSourceLib)', '$(_sUpperPath)', '$(_sSourceTable)', '$(_sExt)') called.;
 	End If 
 
@@ -98,13 +98,13 @@ Sub SetFileURI( _sSourceLib, _sUpperPath, _sSourceTable, _sExt, sResultURI)
 	
 	SET sResultURI = $(_sSourceLib)/$(sUpperPath)$(_sSourceTable).$(_sExt);
 	
-	If SERVER.DEBUG Then 
+	If QSF.DEBUG Then 
 		TRACE ParseFileURI: '$(sResultURI)' returned.;
 	End If 
 End Sub 
 
 Sub GetFileDetails( _sFileURI, bIsPresent, iFileSize, tFileTime)
-	If SERVER.DEBUG Then 
+	If QSF.DEBUG Then 
 		TRACE GetFileDetails( '$(_sFileURI)') called.;
 	End If 
 	
@@ -119,7 +119,7 @@ Sub GetFileDetails( _sFileURI, bIsPresent, iFileSize, tFileTime)
 		tFileTime = FileTime( 'lib://$(_sFileURI)');
 	End If
 	
-	If SERVER.DEBUG Then 
+	If QSF.DEBUG Then 
 		TRACE GetFileDetails: bIsPresent = '$(bIsPresent)';
 		TRACE GetFileDetails: iFileSize = '$(iFileSize)';
 		TRACE GetFileDetails: tFileTime = '$(tFileTime)';
@@ -127,7 +127,7 @@ Sub GetFileDetails( _sFileURI, bIsPresent, iFileSize, tFileTime)
 End Sub 
 
 Sub FileExists( _sFileURI, bExists)
-	If SERVER.DEBUG Then 
+	If QSF.DEBUG Then 
 		TRACE FileExists( '$(_sFileURI)') called.;
 	End If 
 
@@ -137,7 +137,7 @@ Sub FileExists( _sFileURI, bExists)
 		bExists=True();
 	End If 
 
-	If SERVER.DEBUG Then 
+	If QSF.DEBUG Then 
 		TRACE FileExists: bExists = '$(bExists)';
 	End If 
 End Sub
