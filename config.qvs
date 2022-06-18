@@ -1,0 +1,16 @@
+/*************************************************************
+							CONSTANTS
+*************************************************************/
+// Data Connections
+SERVER.SCRIPT_DC = 'Scripts';
+SERVER.DATA_DC = 'Data';
+
+// QSF Repo (a directory under the SCRIPT_DC)
+SERVER.QSF_REPO_NAME = 'qsf';
+
+// Default environment (DEV|TEST|UAT|PROD)
+SERVER.ENV = 'DEV';
+
+// Other Variables
+SERVER.DEBUG = '0b0';
+SERVER.LOG_LEVEL = 'INFO';

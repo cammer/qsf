@@ -4,29 +4,36 @@
 APP.REPO_NAME
   Type: 	String
   Purpose:  The name of the repo where the application's load scripts reside. 
+			This is a sub-directory under the Scripts root.
 *************************************************************/
 TRACE Qlik Scripting Framework (QSF) starting....;
 
-TRACE ....____    ________;
-TRACE .../ __ \  / __/ __/;
+TRACE ....____... ________;
+TRACE .../ __ \. / __/ __/;
 TRACE ../ /_/ / _\ \/ _/  ;
 TRACE ..\___\_\/___/_/    ;
-
 
 /*************************************************************
 							CONSTANTS
 *************************************************************/
-SET SERVER.SCRIPT_LIB = Scripts;
-SET SERVER.QSF_REPO_NAME = qsf;
+$(Must_Include=[lib://Scripts/qsf/config.qvs]);
+
+// Validate the server environment, as read from config.qvs
+// Must be one of [DEV|TEST|UAT|PROD]
+If Pick( SERVER.ENV, 'DEV', 'TEST', 'UAT', 'PROD')=0 Then 
+	TRACE Invalid environment '$(SERVER.ENV)';
+	TRACE Must be one of [DEV|TEST|UAT|PROD];
+	
+	Call DebugServerVars;
+	Exit Script
+End If 
 
 /*************************************************************
 							INITIALIZE
 *************************************************************/
-SET SERVER.QSF_LIB = $(SERVER.SCRIPT_LIB)/$(SERVER.QSF_REPO_NAME);
-SET SERVER.ENV='';
-SET APP.ENV='';
-SET APP.SCRIPT='';
-LET SERVER.DEBUG=False();
+SET SERVER.QSF_LIB	= $(SERVER.SCRIPT_DC)/$(SERVER.QSF_REPO_NAME);
+SET APP.ENV			='';
+SET APP.SCRIPT_NAME	='';
 
 /*************************************************************
 							INCLUDES
@@ -37,40 +44,18 @@ $(Must_Include=[lib://$(SERVER.QSF_LIB)/gen_procs.qvs]);
 $(Must_Include=[lib://$(SERVER.QSF_LIB)/ini_procs.qvs]);
 /************************************************************/
 
-							
-/*************************************************************
-				READ SERVER CONFIG FILE
-*************************************************************/
-// Read the server configuration file
-SET SERVER.CONFIG_FILE = "$(SERVER.QSF_LIB)/config.ini";
-Call SetParameters( SERVER.CONFIG_FILE);
-
-// Validate the server environment (must be DEV|TEST|UAT|PROD)
-If Pick( SERVER.ENV, 'DEV', 'TEST', 'UAT', 'PROD')=0 Then 
-	TRACE Invalid environment '$(SERVER.ENV)';
-	TRACE Must be one of [DEV|TEST|UAT|PROD];
-	
-	Call DebugInit;
-	Call DebugApp;
-	Exit Script
-End If 
-/************************************************************/
-
-
 // The calling application must provide a git repo name.  Fail if one is not provided.
 If IsNull( APP.REPO_NAME) OR Trim( APP.REPO_NAME)='' Then 
 	TRACE APP.REPO_NAME has not been set;
 	TRACE You must link this application to a git repository;
 	TRACE The git repo must be checked-out beneath the Scripts directory on the server;
 	
-	Call DebugInit;
-	Call DebugApp;
 	Exit Script 
 End If 
 
 
 /*************************************************************
-				COMPARE SERVER.ENV TO APP.ENV
+				GET the APP.ENV
 *************************************************************/
 // Get the name of the calling application
 APP.NAME = DocumentTitle();
@@ -79,37 +64,38 @@ APP.NAME = DocumentTitle();
 Call GetEnvFromAppName( APP.NAME, SERVER.ENV, APP.ENV);
 TRACE APP.ENV = $(APP.ENV);
 
-
+/*************************************************************
+				COMPARE Environments (SERVER to APP)
+*************************************************************/
 // If they match...
 If (APP.ENV = SERVER.ENV) Then 
-	// Do nothing - scripts will be loaded from a repo under the root (ex. /Scripts/some_repo)
+	
 	TRACE Application environment matches server environment;
+
+	// Scripts will be loaded from directories under the root (ex. /Scripts/some_repo)
+	SET SERVER.SCRIPT_LIB 	= $(SERVER.SCRIPT_DC);		
+	SET APP.SCRIPT_LIB 		= $(SERVER.SCRIPT_DC)/$(APP.REPO_NAME);
+	SET SERVER.DATA_LIB 	= $(SERVER.DATA_DC); 		
 	
 Else 
-	// Scripts will be loaded from a sub-directory under the root (ex. /Scripts/_UAT/some_repo)
 	TRACE Application environment does NOT match server environment;
-	SET SERVER.SCRIPT_LIB = "$(SERVER.SCRIPT_LIB)/_$(APP.ENV)";
+
+	// Script directories will be located beneath an environment sub-directory (ex. /Scripts/_UAT/some_repo)
+	SET SERVER.SCRIPT_LIB 	= $(SERVER.SCRIPT_DC)/_$(APP.ENV);
+	SET APP.SCRIPT_LIB 		= $(SERVER.SCRIPT_DC)/_$(APP.ENV)/$(APP.REPO_NAME);
+	SET SERVER.DATA_LIB 	= $(SERVER.DATA_DC)/_$(APP.ENV);
 
 End If
-/************************************************************/
-
-
-	
-/*************************************************************
-				SET APPLICATION SCRIPT LIBRARY
-*************************************************************/
-// Set the application script library based on the the APP.REPO_NAME
-SET APP.SCRIPT_LIB = "$(SERVER.SCRIPT_LIB)/$(APP.REPO_NAME)";
 /************************************************************/
 
 
 /*************************************************************
 				SHORT APP NAME
 *************************************************************/
-// Cleanse the app name (lowercase, remove reserved words and special characters)
+// Cleanse the app name (remove reserved words and special characters, set to lowercase)
 Call shortenAppName( APP.NAME, APP.SHORT_NAME);
 
-SET APP.CONFIG_FILE = "$(APP.SCRIPT_LIB)/$(APP.SHORT_NAME).ini";
+SET APP.CONFIG_FILE = $(APP.SCRIPT_LIB)/$(APP.SHORT_NAME).ini;
 /************************************************************/
 
 
@@ -141,20 +127,25 @@ End If
 		Default is <APP.SHORT_NAME>.qvs unless overridden in the INI file.
 		If set, the script will be <APP.SCRIPT_NAME>.qvs
 ***************************************************************************************************************/
-// Set the defaults
+// Set the default elements for the script name
 SET sFileName = $(APP.SHORT_NAME);
-sExt='qvs';
+SET sExt = qvs;
 
 // See if APP.SCRIPT_NAME was set in the INI file 
 If Len( APP.SCRIPT_NAME)>0 Then
 
 	TRACE QSF: APP.SCRIPT_NAME was overrideen.;	
+
 	// Parse the APP.SCRIPT_NAME variable to get the path components
-	Call ParseFileURI( '$(APP.SCRIPT_NAME)', sUpperPath, sFileName, sExt);
+	Call ParseFileURI( APP.SCRIPT_NAME, sUpperPath, sFileName, sExt);
+
+	If Len(sExt)=0 Then 
+		SET sExt = qvs;
+	End If 
 
 Else 
 	// If the APP.SCRIPT_NAME was not set, use APP.SHORT_NAME
-	TRACE QSF: APP.SCRIPT_NAME was not set.;
+	TRACE QSF: APP.SCRIPT_NAME was not set.  Using the default;
 End If
 
 // Construct the URI for the script file
@@ -168,15 +159,17 @@ Call FileExists( APP.SCRIPT_FILE, bScriptExists);
 If NOT bScriptExists Then 
 	TRACE QSF: '$(APP.SCRIPT_FILE)' was not found.  Aborting...;
 	
-	Call DebugInit;
-	Call DebugApp;
+	Call DebugServerVars;
+	Call DebugAppVars;
 	Exit Script;
 End If
 
 // Debug
 If (SERVER.DEBUG) Then 
-	Call DebugInit;
-	Call DebugApp;
+	Call DebugServerVars;
+	Call DebugAppVars;
+Else 
+	Call DropConfigTables;
 End If 
 
 // If we are not clearing the app then run the script
@@ -185,10 +178,4 @@ If NOT (APP.CLEAR) Then
 	
 	// Run the script
 	$(Include=[lib://$(APP.SCRIPT_FILE)]);
-End If 
-/**************************************************************************************************************/
-
-//Clean up
-If NOT (SERVER.DEBUG) Then 
-	Call DropConfigTables;
 End If 

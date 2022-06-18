@@ -1,10 +1,13 @@
 TRACE QSF/gen_procs.qvs included;
 
-Sub DebugInit
+Sub DebugServerVars
 	TRACE *********************************************************;
 	TRACE **  SERVER/ENVIRONMENT VARIABLES;
 	TRACE *********************************************************;
+	TRACE 'Scripts' Data Connection:	$(SERVER.SCRIPT_DC); 
+	TRACE 'Data' Data Connection:		$(SERVER.DATA_DC); 
 	TRACE Scripts Library: 				$(SERVER.SCRIPT_LIB); 
+	TRACE Data Library:					$(SERVER.DATA_LIB); 
 	TRACE QSF Repo/Directory:	 		$(SERVER.QSF_REPO_NAME); 
 	TRACE QSF LIB:				 		$(SERVER.QSF_LIB); 
 	TRACE Server Config File: 			$(SERVER.CONFIG_FILE); 
@@ -14,16 +17,16 @@ Sub DebugInit
 	TRACE LOAD_PREFIX_FIRST: 			$(LOAD_PREFIX_FIRST);
 End Sub
 
-Sub DebugApp
+Sub DebugAppVars
 	TRACE *********************************************************;
 	TRACE **  APPLICATION VARIABLES;
 	TRACE *********************************************************;
 	TRACE Application Name:				$(APP.NAME); 
 	TRACE Short App Name: 				$(APP.SHORT_NAME); 
 	TRACE Application''s Git Repo: 		$(APP.REPO_NAME); 
+	TRACE Application environment: 		$(APP.ENV); 
 	TRACE Application Script Library: 	$(APP.SCRIPT_LIB); 
 	TRACE Application Config File: 		$(APP.CONFIG_FILE); 
-	TRACE Application environment: 		$(APP.ENV); 
 	TRACE Clear Flag: 					$(APP.CLEAR); 
 	TRACE Limit Rows Flag:		 		$(APP.LIMIT_ROWS); 
 	TRACE Row Limit:			 		$(APP.ROW_LIMIT); 
