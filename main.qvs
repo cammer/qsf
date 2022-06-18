@@ -13,15 +13,10 @@ TRACE .../ __ \. / __/ __/;
 TRACE ../ /_/ / _\ \/ _/  ;
 TRACE ..\___\_\/___/_/    ;
 
-/*************************************************************
-							CONSTANTS
-*************************************************************/
-$(Must_Include=[lib://Scripts/qsf/config.qvs]);
-
-// Validate the server environment, as read from config.qvs
+// Validate the default environment, as read from config.qvs
 // Must be one of [DEV|TEST|UAT|PROD]
-If Pick( SERVER.ENV, 'DEV', 'TEST', 'UAT', 'PROD')=0 Then 
-	TRACE Invalid environment '$(SERVER.ENV)';
+If Pick( QSF.DEFAULT_ENV, 'DEV', 'TEST', 'UAT', 'PROD')=0 Then 
+	TRACE Invalid environment '$(QSF.DEFAULT_ENV)';
 	TRACE Must be one of [DEV|TEST|UAT|PROD];
 	
 	Call DebugServerVars;
@@ -31,20 +26,20 @@ End If
 /*************************************************************
 							INITIALIZE
 *************************************************************/
-SET SERVER.QSF_LIB	= $(SERVER.SCRIPT_DC)/$(SERVER.QSF_REPO_NAME);
 SET APP.ENV			='';
 SET APP.SCRIPT_NAME	='';
 
 /*************************************************************
 							INCLUDES
 *************************************************************/
-$(Must_Include=[lib://$(SERVER.QSF_LIB)/file_procs.qvs]);
-$(Must_Include=[lib://$(SERVER.QSF_LIB)/table_procs.qvs]);
-$(Must_Include=[lib://$(SERVER.QSF_LIB)/gen_procs.qvs]);
-$(Must_Include=[lib://$(SERVER.QSF_LIB)/ini_procs.qvs]);
+$(Must_Include=[lib://$(QSF.SCRIPT_LIB)/$(QSF.REPO_NAME)/file_procs.qvs]);
+$(Must_Include=[lib://$(QSF.SCRIPT_LIB)/$(QSF.REPO_NAME)/table_procs.qvs]);
+$(Must_Include=[lib://$(QSF.SCRIPT_LIB)/$(QSF.REPO_NAME)/gen_procs.qvs]);
+$(Must_Include=[lib://$(QSF.SCRIPT_LIB)/$(QSF.REPO_NAME)/ini_procs.qvs]);
 /************************************************************/
 
-// The calling application must provide a git repo name.  Fail if one is not provided.
+// The calling application must provide a directory.  Fail if one is not provided.
+// This directory should be accessible from the QSF.SCRIPT_LIB
 If IsNull( APP.REPO_NAME) OR Trim( APP.REPO_NAME)='' Then 
 	TRACE APP.REPO_NAME has not been set;
 	TRACE You must link this application to a git repository;
@@ -61,29 +56,31 @@ End If
 APP.NAME = DocumentTitle();
 
 // Parse the app name for environment reserved words.  Returns APP.ENV.
-Call GetEnvFromAppName( APP.NAME, SERVER.ENV, APP.ENV);
+Call GetEnvFromAppName( APP.NAME, QSF.DEFAULT_ENV, APP.ENV);
 TRACE APP.ENV = $(APP.ENV);
 
 /*************************************************************
 				COMPARE Environments (SERVER to APP)
 *************************************************************/
 // If they match...
-If (APP.ENV = SERVER.ENV) Then 
+If (APP.ENV = QSF.DEFAULT_ENV) Then 
 	
 	TRACE Application environment matches server environment;
 
 	// Scripts will be loaded from directories under the root (ex. /Scripts/some_repo)
-	SET SERVER.SCRIPT_LIB 	= $(SERVER.SCRIPT_DC);		
-	SET APP.SCRIPT_LIB 		= $(SERVER.SCRIPT_DC)/$(APP.REPO_NAME);
-	SET SERVER.DATA_LIB 	= $(SERVER.DATA_DC); 		
-	
+	SET QSF.SCRIPT_LIB 	= $(QSF.SCRIPT_LIB);		
+	SET APP.SCRIPT_LIB	= $(QSF.SCRIPT_LIB)/$(APP.REPO_NAME);
+
+	SET QSF.DATA_LIB 	= $(QSF.DATA_LIB); 		
+
 Else 
 	TRACE Application environment does NOT match server environment;
 
 	// Script directories will be located beneath an environment sub-directory (ex. /Scripts/_UAT/some_repo)
-	SET SERVER.SCRIPT_LIB 	= $(SERVER.SCRIPT_DC)/_$(APP.ENV);
-	SET APP.SCRIPT_LIB 		= $(SERVER.SCRIPT_DC)/_$(APP.ENV)/$(APP.REPO_NAME);
-	SET SERVER.DATA_LIB 	= $(SERVER.DATA_DC)/_$(APP.ENV);
+	SET QSF.SCRIPT_LIB 	= $(QSF.SCRIPT_LIB)/_$(APP.ENV);
+	SET APP.SCRIPT_LIB 	= $(QSF.SCRIPT_LIB)/_$(APP.ENV)/$(APP.REPO_NAME);
+
+	SET QSF.DATA_LIB 	= $(QSF.DATA_LIB)/_$(APP.ENV);
 
 End If
 /************************************************************/
@@ -165,7 +162,7 @@ If NOT bScriptExists Then
 End If
 
 // Debug
-If (SERVER.DEBUG) Then 
+If (QSF.DEBUG) Then 
 	Call DebugServerVars;
 	Call DebugAppVars;
 Else 

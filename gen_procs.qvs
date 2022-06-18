@@ -94,9 +94,22 @@ Sub CleanseString( _sInput, _sSearch, _sReplace, sOutput)
 	Next 
 End Sub 
 
+
 Sub ShortenAppName( _sInput, sOutput)
 	Call CleanseString( _sInput, ' ', '_', sOutput);
 End Sub 
 
 
+Sub QuoteListElements( _sInput, sOutput)
+	sOutput = ''
 
+	iTotalElements = SubStringCount( _sInput, ',') + 1;
+	For iElement = 1 to iTotalElements
+		sElement = SubField( _sInput, ',', iElement);
+		If iElement = 1 Then
+			sOutput = Chr(39) & sElement & Chr(39)
+		Else 
+			sOutput = sOutput & Chr(44) & Chr(39) & sElement & Chr(39)
+		End if
+	Next
+End Sub 

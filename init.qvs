@@ -1,0 +1,19 @@
+/*************************************************************
+							CONSTANTS
+*************************************************************/
+// Data Connections
+QSF.SCRIPT_LIB   = 'Scripts';
+QSF.DATA_LIB     = 'Data';
+
+// QSF Directory (a directory under the SCRIPT_DC)
+// Usually corresponds to a cloned git repository
+QSF.REPO_NAME = 'qsf';
+
+// Default environment (DEV|TEST|UAT|PROD)
+QSF.DEFAULT_ENV = 'DEV';
+
+// Other Variables
+QSF.DEBUG = '0b0';
+QSF.LOG_LEVEL = 'INFO';
+
+$(Must_Include=[lib://$(QSF.SCRIPT_LIB)/$(QSF.REPO_NAME)/main.qvs]);
